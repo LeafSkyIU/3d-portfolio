@@ -433,7 +433,7 @@ function _updateThumb(id,src){
 /* ----- RENDER CARDS ----- */
 function renderCards(){
   const grid=document.getElementById('modelGrid'),uc=document.getElementById('uploadCard');
-  grid.innerHTML='';grid.appendChild(uc);
+  while(grid.children.length>1) grid.removeChild(grid.lastElementChild);
   STATE.models.forEach(m=>{
     const c=document.createElement('div');c.className='model-card fade-in';
     c.setAttribute('data-model-id',m.id);c.title=m.name;
