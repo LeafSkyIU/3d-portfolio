@@ -55,7 +55,7 @@ button{cursor:pointer;border:none;background:none;font:inherit;color:inherit;-we
 .model-card:hover{transform:translateY(-6px);box-shadow:0 16px 48px rgba(0,0,0,0.08)}
 .model-card:active{transform:translateY(-2px) scale(0.98)}
 @media(max-width:640px){
-  .model-card{min-height:75vh;border-radius:16px;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+  .model-card{height:auto;border-radius:16px;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
   .model-card:active{transform:scale(0.97)}
 }
 .card-thumb{width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0}
@@ -250,7 +250,8 @@ const STATE = {
   currentModelId: null,
   lightMode: 'day',
   lightAnim: false,
-  matMode: 'textured'
+  matMode: 'textured',
+  lightIntensity: 1.0
 };
 let renderer, scene, camera, controls, animFrameId;
 let currentModelGroup = null;
@@ -386,29 +387,35 @@ function setupDayLights(){
   toRemove.forEach(c=>scene.remove(c));
 
   // Key light - bright and warm
-  const key=new THREE.DirectionalLight(0xffeedd,2.5);
+  const key=new THREE.DirectionalLight(0xb5ccff,2.5);
   key.position.set(5,8,5);
   key.castShadow=true;
+  key._baseIntensity=2.5;
   scene.add(key);
 
   // Fill light
-  const fill=new THREE.DirectionalLight(0xffffff,1.2);
+  const fill=new THREE.DirectionalLight(0xddeeff,1.2);
   fill.position.set(-4,2,3);
+  fill._baseIntensity=1.2;
   scene.add(fill);
 
   // Back rim light
-  const rim=new THREE.DirectionalLight(0xffffff,1.0);
+  const rim=new THREE.DirectionalLight(0xeef5ff,1.0);
   rim.position.set(0,2,-6);
+  rim._baseIntensity=1.0;
   scene.add(rim);
 
   // Ambient
-  const amb=new THREE.AmbientLight(0xffffff,0.6);
+  const amb=new THREE.AmbientLight(0xbbccff,0.6);
+  amb._baseIntensity=0.6;
   scene.add(amb);
 
   // Bottom fill
-  const bottom=new THREE.DirectionalLight(0xffffff,0.4);
+  const bottom=new THREE.DirectionalLight(0xccddff,0.4);
   bottom.position.set(0,-4,0);
+  bottom._baseIntensity=0.4;
   scene.add(bottom);
+  applyLightIntensity();
 }
 
 function setupNightLights(){
@@ -418,20 +425,25 @@ function setupNightLights(){
   toRemove.forEach(c=>scene.remove(c));
 
   // Three-point studio lighting
-  const key=new THREE.DirectionalLight(0xffcc88,2.0);
+  const key=new THREE.DirectionalLight(0x99bbff,2.0);
   key.position.set(4,3,4);
+  key._baseIntensity=2.0;
   scene.add(key);
 
-  const fill=new THREE.DirectionalLight(0x88aaff,0.8);
+  const fill=new THREE.DirectionalLight(0x7799ee,0.8);
   fill.position.set(-3,1,2);
+  fill._baseIntensity=0.8;
   scene.add(fill);
 
-  const back=new THREE.DirectionalLight(0xffffff,0.6);
+  const back=new THREE.DirectionalLight(0xbbccff,0.6);
   back.position.set(0,2,-5);
+  back._baseIntensity=0.6;
   scene.add(back);
 
-  const amb=new THREE.AmbientLight(0x223355,0.3);
+  const amb=new THREE.AmbientLight(0x1a2a55,0.3);
+  amb._baseIntensity=0.3;
   scene.add(amb);
+  applyLightIntensity();
 }
 
 function applyMatMode(){
@@ -588,6 +600,16 @@ function closeModal(){
 }
 
 document.getElementById('modalClose').addEventListener('click',closeModal);
+function applyLightIntensity(){
+  if(!scene) return;
+  const mul=STATE.lightIntensity;
+  scene.children.forEach(c=>{
+    if(c.isLight && c._baseIntensity!==undefined){
+      c.intensity=c._baseIntensity*mul;
+    }
+  });
+}
+
 document.getElementById('modalOverlay').addEventListener('click',e=>{
   if(e.target===e.currentTarget) closeModal();
 });
@@ -630,6 +652,13 @@ document.querySelectorAll('[data-light]').forEach(b=>{
     if(STATE.lightMode==='day') setupDayLights();
     else setupNightLights();
   });
+});
+
+document.getElementById('intensitySlider').addEventListener('input',function(){
+  const v=parseFloat(this.value);
+  STATE.lightIntensity=v;
+  document.getElementById('intensityValue').textContent=v.toFixed(1)+'×';
+  applyLightIntensity();
 });
 
 document.querySelector('[data-anim="toggle"]').addEventListener('click',function(){
