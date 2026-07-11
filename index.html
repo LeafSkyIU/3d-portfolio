@@ -207,7 +207,7 @@ footer{position:relative;z-index:2;max-width:var(--max-w);margin:0 auto;padding:
 
 <section class="grid-section">
   <div class="model-grid" id="modelGrid">
-    <div class="model-card" id="uploadCard" onclick="document.getElementById('modelFileInput').click()">
+    <div class="model-card" id="uploadCard">
       <div class="card-placeholder">
         <div class="icon-plus">+</div>
         <span>上传 3D 模型</span>
@@ -452,7 +452,8 @@ document.getElementById('modelFileInput').addEventListener('change',async e=>{
     const id='m_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
     STATE.models.push({id,name:f.name,blob:f,thumbnail:''});await dbPut('models',{id,name:f.name,blob:f,thumbnail:''});
   }
-  renderCards();e.target.value='';
+  try{renderCards();}catch(e){console.error(e);}
+  e.target.value='';
 });
 document.getElementById('modelGrid').addEventListener('click',async e=>{
   if(e.target.closest('#uploadCard')||e.target.id==='uploadCard'){
@@ -549,9 +550,6 @@ async function initApp(){
   renderCards();
 }
 initApp();
-document.querySelector('#modelGrid > #uploadCard')?.addEventListener('click',()=>{
-  document.getElementById('modelFileInput').click();
-});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 console.log('3D Portfolio ready'+(isMobile?' (mobile mode)':''));
 const h=document.getElementById('panelHint');if(h&&isMobile)h.textContent='\u{1F590} \u5355\u6307\u65CB\u8F6C \u00B7 \u53CC\u6307\u7F29\u653E \u00B7 \u53CC\u6307\u5E73\u79FB';
