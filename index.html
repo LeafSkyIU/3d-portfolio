@@ -176,39 +176,9 @@ footer{position:relative;z-index:2;max-width:var(--max-w);margin:0 auto;padding:
 @media(max-width:768px){
   .panel-btn{padding:10px 14px;min-height:40px;font-size:0.82rem;flex:1 1 auto}
 }
-/* HDRI */
-.hdri-list{display:flex;flex-direction:column;gap:5px;max-height:120px;overflow-y:auto;-webkit-overflow-scrolling:touch}
-.hdri-item{
-  display:flex;align-items:center;gap:8px;
-  padding:7px 10px;border-radius:var(--radius-sm);
-  background:rgba(255,255,255,0.3);
-  border:1px solid rgba(0,0,0,0.04);
-  font-size:0.78rem;color:#222222;min-height:32px;
-  transition:all var(--transition);
-}
-.hdri-item:active{background:rgba(255,255,255,0.6)}
-.hdri-item.active{border-color:var(--orange);background:var(--orange-light)}
-.hdri-item .hdri-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.hdri-item .hdri-vis{
-  width:20px;height:20px;border-radius:50%;border:1px solid rgba(0,0,0,0.1);
-  display:flex;align-items:center;justify-content:center;font-size:10px;color:#999;flex-shrink:0;
-}
-.hdri-item .hdri-vis:active{border-color:var(--orange);color:var(--orange)}
-.upload-hdri-btn{
-  margin-top:2px;padding:8px 12px;border-radius:var(--radius-sm);
-  border:1px dashed rgba(0,0,0,0.1);font-size:0.78rem;color:#888888;text-align:center;min-height:34px;
-  transition:all var(--transition);
-}
-.upload-hdri-btn:active{border-color:var(--orange);color:var(--orange);background:var(--orange-light)}
-@media(max-width:768px){.upload-hdri-btn{min-height:40px;padding:10px 12px}}
-/* Save */
-.panel-save{
-  margin-top:auto;padding:11px 0;border-radius:var(--radius-btn);
-  background:rgba(255,255,255,0.6);border:1px solid rgba(0,0,0,0.06);
-  font-size:0.82rem;color:#222222;text-align:center;min-height:40px;
-  transition:all var(--transition);
-}
-.panel-save:active{transform:scale(0.97);border-color:var(--orange);color:var(--orange)}
+
+@media(max-width:768px){}
+
 /* Hint */
 .panel-hint{font-size:0.68rem;color:#888888;text-align:center;line-height:1.5;padding-top:6px;border-top:1px solid rgba(0,0,0,0.04)}
 /* Loading */
@@ -276,23 +246,13 @@ footer{position:relative;z-index:2;max-width:var(--max-w);margin:0 auto;padding:
           <button class="panel-btn" data-mat="white">⚪ 白膜模式</button>
         </div>
       </div>
-      <div class="panel-group">
-        <div class="panel-group-label">HDRI 环境光照</div>
-        <div class="hdri-list" id="hdriList">
-          <div class="hdri-item active" data-hdri="none">
-            <span class="hdri-name">无 HDRI</span>
-            <span class="hdri-vis">👁</span>
-          </div>
-        </div>
-        <button class="upload-hdri-btn" id="uploadHdriBtn">+ 上传 HDRI / EXR 文件</button>
-      </div>
-      <button class="panel-save" id="panelSave">💾 保存设置</button>
+      
       <div class="panel-hint" id="panelHint">🖱 左键旋转 · 滚轮缩放 · 中键平移</div>
     </div>
   </div>
 </div>
 <input type="file" id="modelFileInput" accept=".glb,.gltf,.obj" style="display:none" multiple>
-<input type="file" id="hdriFileInput" accept=".hdr,.exr" style="display:none" multiple>
+
 <script type="importmap">
 {
   "imports": {
@@ -306,12 +266,9 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
-import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
-import { EXRLoader } from 'three/addons/loaders/EXRLoader.js';
 /* ----- STATE ----- */
 const STATE = {
-  models: [], currentModelId: null, hdriFiles: [], activeHdriId: null,
-  hdriVisible: true, lightMode: 'day', lightAnim: false, matMode: 'textured', envMap: null,
+  models: [], currentModelId: null,  lightMode: 'day', lightAnim: false, matMode: 'textured', envMap: null,
 };
 /* ----- IDB ----- */
 function openDB(){
@@ -320,7 +277,6 @@ function openDB(){
     req.onupgradeneeded=e=>{
       const db=e.target.result;
       if(!db.objectStoreNames.contains('models')) db.createObjectStore('models',{keyPath:'id'});
-      if(!db.objectStoreNames.contains('hdris')) db.createObjectStore('hdris',{keyPath:'id'});
     };
     req.onsuccess=e=>res(e.target.result);
     req.onerror=e=>rej(e.target.error);
@@ -470,35 +426,9 @@ function _updateThumb(id,src){
   if(!i){i=document.createElement('img');i.className='card-thumb';i.draggable=false;i.loading='lazy';c.insertBefore(i,c.querySelector('.card-label'));}
   i.src=src;i.style.display='';
 }
-/* ----- HDRI ----- */
-async function applyHDRI(id){
-  document.querySelectorAll('.hdri-item').forEach(el=>el.classList.remove('active'));
-  const t=document.querySelector('[data-hdri="'+id+'"]');if(t)t.classList.add('active');
-  STATE.activeHdriId=id;
-  if(id==='none'||!STATE.hdriVisible){
-    scene.environment=STATE.envMap;
-    scene.background=STATE.hdriVisible?(STATE.lightMode==='night'?new THREE.Color(0x181818):new THREE.Color(0xf2f2f2)):new THREE.Color(0xf2f2f2);
-    return;
-  }
-  const e=STATE.hdriFiles.find(f=>f.id===id);if(!e||!e.url)return;
-  try{
-    const isHdr=e.url.toLowerCase().endsWith('.hdr');
-    const loader=isHdr?new RGBELoader():new EXRLoader();
-    const t2=await(loader.loadAsync(e.url));
-    t2.mapping=THREE.EquirectangularReflectionMapping;
-    const env=pmrem.fromEquirectangular(t2);
-    scene.environment=env.texture;scene.background=env.texture;
-    t2.dispose();
-  }catch(e2){console.warn('HDRI fail',e2);}
-}
-function toggleHDRI(){
-  STATE.hdriVisible=!STATE.hdriVisible;
-  const b=document.querySelector('[data-hdri-vis]');
-  if(b)b.textContent=STATE.hdriVisible?'\u{1F441}':'\u{1F441}\u200D\u{1F5E8}';
-  applyHDRI(STATE.activeHdriId||'none');
+}':'\u{1F441}\u200D\u{1F5E8}';
 }
 /* ----- SCREENSHOT ----- */
-
 
 /* ----- RENDER CARDS ----- */
 function renderCards(){
@@ -565,7 +495,6 @@ document.querySelectorAll('[data-light]').forEach(b=>b.addEventListener('click',
   document.querySelectorAll('[data-light]').forEach(x=>x.classList.remove('active'));b.classList.add('active');
   STATE.lightMode=b.getAttribute('data-light');
   if(STATE.lightMode==='day')setupDayLights();else setupNightLights();
-  if(STATE.hdriVisible&&STATE.activeHdriId&&STATE.activeHdriId!=='none')applyHDRI(STATE.activeHdriId);
 }));
 document.querySelector('[data-anim="toggle"]').addEventListener('click',function(){
   STATE.lightAnim=!STATE.lightAnim;this.classList.toggle('active');
@@ -575,34 +504,20 @@ document.querySelectorAll('[data-mat]').forEach(b=>b.addEventListener('click',()
   document.querySelectorAll('[data-mat]').forEach(x=>x.classList.remove('active'));b.classList.add('active');
   STATE.matMode=b.getAttribute('data-mat');applyMatMode();
 }));
-/* ----- HDRI UPLOAD ----- */
-function addHDRIItem(id,name){
-  const list=document.getElementById('hdriList'),item=document.createElement('div');
-  item.className='hdri-item';item.setAttribute('data-hdri',id);
-  item.innerHTML='<span class="hdri-name">'+name+'</span><span class="hdri-vis" data-hdri-vis="hide">\u{1F441}</span>';
-  item.addEventListener('click',e=>{if(e.target.closest('[data-hdri-vis]'))toggleHDRI();else applyHDRI(id);});
+
   list.appendChild(item);
 }
-document.getElementById('uploadHdriBtn').addEventListener('click',()=>document.getElementById('hdriFileInput').click());
-document.getElementById('hdriFileInput').addEventListener('change',async e=>{
   for(const f of Array.from(e.target.files)){
     const id='h_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
     const url=URL.createObjectURL(f);
-    STATE.hdriFiles.push({id,name:f.name,blob:f,url});await dbPut('hdris',{id,name:f.name,blob:f});
-    addHDRIItem(id,f.name);
   }
   e.target.value='';
 });
-document.getElementById('hdriList').addEventListener('click',e=>{const v=e.target.closest('[data-hdri-vis]');if(v){e.stopPropagation();toggleHDRI();}});
-/* ----- SCREENSHOT + SAVE ----- */
 
 document.getElementById('modalScreenshotBtn').addEventListener('click',takeScreenshot);
-document.getElementById('panelSave').addEventListener('click',async ()=>{
   if(!STATE.currentModelId)return;
-  const s={lightMode:STATE.lightMode,lightAnim:STATE.lightAnim,matMode:STATE.matMode,activeHdriId:STATE.activeHdriId,hdriVisible:STATE.hdriVisible};
   const m=STATE.models.find(x=>x.id===STATE.currentModelId);
   if(m){m.settings=s;await dbPut('models',m);}
-  const btn=document.getElementById('panelSave');btn.textContent='\u2705 \u5DF2\u4FDD\u5B58';
   setTimeout(()=>{btn.textContent='\u{1F4BE} \u4FDD\u5B58\u8BBE\u7F6E';},1500);
 });
 async function loadSettingsForModel(modelId){
@@ -623,18 +538,11 @@ async function loadSettingsForModel(modelId){
     document.querySelectorAll('[data-mat]').forEach(b=>b.classList.toggle('active',b.getAttribute('data-mat')===s.matMode));
     applyMatMode();
   }
-  if(s.activeHdriId){
-    STATE.activeHdriId=s.activeHdriId;STATE.hdriVisible=s.hdriVisible!==false;
-    applyHDRI(s.activeHdriId);
-    document.querySelectorAll('.hdri-item').forEach(el=>el.classList.toggle('active',el.getAttribute('data-hdri')===s.activeHdriId));
-  }
+    document.querySelectorAll('
 }
 /* ----- INIT ----- */
 async function initApp(){
   const models=await dbGetAll('models');STATE.models=models.filter(m=>m.blob);
-  const hdris=await dbGetAll('hdris');
-  hdris.forEach(h=>{if(h.blob)STATE.hdriFiles.push({id:h.id,name:h.name,blob:h.blob,url:URL.createObjectURL(h.blob)});});
-  STATE.hdriFiles.forEach(h=>addHDRIItem(h.id,h.name));
   renderCards();
 }
 initApp();
